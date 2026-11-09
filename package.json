@@ -1,0 +1,38 @@
+{
+  "name": "tilikstory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "trustedDependencies": ["@prisma/engines"],
+  "scripts": {
+    "dev": "bun run db:generate && next dev",
+    "build": "bun run db:generate && next build",
+    "start": "next start -H 0.0.0.0",
+    "db:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "test": "bun --conditions=react-server test tests/unit",
+    "test:auth": "docker compose up -d --build app && docker compose run --rm integration"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "dotenv": "17.4.2",
+    "next": "16.4.5",
+    "nodemailer": "10.4.0",
+    "pg": "8.23.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "server-only": "0.0.1",
+    "zod": "4.6.7",
+    "prisma": "7.10.1"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "@types/node": "24.19.2",
+    "@types/nodemailer": "8.0.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "6.0.3"
+  }
+}
