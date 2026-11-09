@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: tilikstory
+      POSTGRES_USER: tilikstory
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the untracked .env file}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tilikstory -d tilikstory"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - auth-private
+
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    networks:
+      - auth-private
+
+  app:
+    build:
+      context: .
+      entitlements:
+        - network.host
+    environment:
+      APP_ORIGIN: http://localhost:3000
+      DATABASE_URL: "postgresql://tilikstory:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the untracked .env file}@postgres:5432/tilikstory?schema=public"
+      NODE_ENV: production
+      SMTP_FROM: Tilikstory <no-reply@tilikstory.local>
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - bun
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - auth-private
+
+  integration:
+    build:
+      context: .
+      target: integration
+      entitlements:
+        - network.host
+    command: ["bun", "--conditions=react-server", "test", "tests/unit", "tests/auth.integration.test.ts"]
+    environment:
+      APP_ORIGIN: http://localhost:3000
+      AUTH_TEST_APP_URL: http://app:3000
+      AUTH_TEST_TOPOLOGY: compose-private
+      DATABASE_URL: "postgresql://tilikstory:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the untracked .env file}@postgres:5432/tilikstory?schema=public"
+      MAILPIT_API_URL: http://mailpit:8025
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+    depends_on:
+      app:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    networks:
+      - auth-private
+
+volumes:
+  postgres_data:
+
+networks:
+  auth-private:
+    internal: true
